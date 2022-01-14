@@ -1,5 +1,13 @@
-class BlockedLitteRoot {
-  static const List<List<double>> blockedLittleRootPaths = [
+class LitteRootSettings {
+  static List<double> initialPosition = [1.125, 0.65];
+  static double step = 0.25;
+  static double boyHeight = 20;
+  static Map<String, List<List<double>>> toAnotherMaps = {
+    'pokelab': [
+      [0.625, -1.35]
+    ],
+  };
+  static const List<List<double>> blockedPaths = [
     [0.125, 2.9],
     [0.125, 2.65],
     [0.375, 2.65],

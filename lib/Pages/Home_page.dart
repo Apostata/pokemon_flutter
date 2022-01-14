@@ -1,9 +1,14 @@
 import 'dart:async';
+import 'dart:js_util';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:pokemon_dart/components/characters/boy.dart';
 import 'package:pokemon_dart/components/joypad.dart';
+import 'package:pokemon_dart/components/maps/littleroot/litterootSettings.dart';
 import 'package:pokemon_dart/components/maps/littleroot/littleroot.dart';
+import 'package:pokemon_dart/components/maps/pokelab/pokelab.dart';
+import 'package:pokemon_dart/components/maps/pokelab/pokelabSettings.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -13,15 +18,17 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  double mapX = 1.125;
-  double mapY = 0.65;
+  double mapX = LitteRootSettings.initialPosition[0];
+  double mapY = LitteRootSettings.initialPosition[1];
 
   int boySpriteCount = 0;
   String boyDirection = 'Down';
-  double step = 0.25;
+  double step = LitteRootSettings.step;
+  double boyHeight = LitteRootSettings.boyHeight;
 
   String currentLocation = 'littleroot';
-  List<List<double>> blockedPaths = LittleRoot.blockedPath;
+  List<List<double>> blockedPaths = LitteRootSettings.blockedPaths;
+  Map<String, List<List<double>>> toOtherMaps = LitteRootSettings.toAnotherMaps;
 
   void _animateWalk() async {
     Timer.periodic(const Duration(milliseconds: 50), (timer) {
@@ -37,6 +44,45 @@ class _HomePageState extends State<HomePage> {
 
   double cleanNum(double num) {
     return double.parse(num.toStringAsFixed(4));
+  }
+
+  bool changeMap() {
+    toOtherMaps.forEach((location, paths) {
+      paths.forEach((coordinates) {
+        if (mapX == coordinates[0] && mapY == coordinates[1]) {
+          switch (location) {
+            case 'pokelab':
+              setState(() {
+                boyHeight = PokelabSettings.boyHeight;
+                step = PokelabSettings.step;
+                toOtherMaps = PokelabSettings.toAnotherMaps;
+                blockedPaths = PokelabSettings.blockedPaths;
+                mapX = PokelabSettings.initialPosition[0];
+                mapY = PokelabSettings.initialPosition[1];
+                currentLocation = location;
+              });
+              break;
+            default:
+              setState(() {
+                boyHeight = LitteRootSettings.boyHeight;
+                step = LitteRootSettings.step;
+                toOtherMaps = LitteRootSettings.toAnotherMaps;
+                blockedPaths = LitteRootSettings.blockedPaths;
+                mapX = 0.625;
+                mapY = -1.35;
+                currentLocation = location;
+              });
+              break;
+          }
+        }
+      });
+    });
+    return true;
+  }
+
+  double roundDouble(double value, int places) {
+    num mod = pow(10.0, places);
+    return ((value * mod).round().toDouble() / mod);
   }
 
   bool canMoveTo() {
@@ -68,39 +114,43 @@ class _HomePageState extends State<HomePage> {
 
   void moveUp() {
     boyDirection = 'Up';
+    changeMap();
     if (canMoveTo()) {
       setState(() {
-        mapY += step;
+        mapY = cleanNum(mapY + step);
       });
     }
     _animateWalk();
   }
 
   void moveDown() {
+    changeMap();
     boyDirection = 'Down';
     if (canMoveTo()) {
       setState(() {
-        mapY -= step;
+        mapY = cleanNum(mapY - step);
       });
     }
     _animateWalk();
   }
 
   void moveLeft() {
+    changeMap();
     boyDirection = 'Left';
     if (canMoveTo()) {
       setState(() {
-        mapX += step;
+        mapX = cleanNum(mapX + step);
       });
     }
     _animateWalk();
   }
 
   void moveRight() {
+    changeMap();
     boyDirection = 'Right';
     if (canMoveTo()) {
       setState(() {
-        mapX -= step;
+        mapX = cleanNum(mapX - step);
       });
     }
     _animateWalk();
@@ -111,6 +161,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // print('X:${mapX}, Y:${mapY}');
     return Scaffold(
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -126,8 +177,14 @@ class _HomePageState extends State<HomePage> {
                   y: mapY,
                   currentMap: currentLocation,
                 ),
+                Pokelab(
+                  x: mapX,
+                  y: mapY,
+                  currentMap: currentLocation,
+                ),
                 Container(
                   child: MyBoy(
+                    height: boyHeight,
                     direction: boyDirection,
                     spriteCount: boySpriteCount,
                     location: currentLocation,
