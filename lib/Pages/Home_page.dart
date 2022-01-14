@@ -1,8 +1,9 @@
 import 'dart:async';
-import 'dart:js_util';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:indexed/indexed.dart';
 import 'package:pokemon_dart/components/characters/boy.dart';
 import 'package:pokemon_dart/components/characters/oak.dart';
 import 'package:pokemon_dart/components/joypad.dart';
@@ -22,10 +23,14 @@ class _HomePageState extends State<HomePage> {
   double mapX = LitteRootSettings.initialPosition[0];
   double mapY = LitteRootSettings.initialPosition[1];
 
+  Timer? keyboardTimer;
+  bool keyPressed = false;
+
   int boySpriteCount = 0;
   String boyDirection = 'Down';
   double step = LitteRootSettings.step;
   double boyHeight = LitteRootSettings.boyHeight;
+  int boyIndex = 2;
 
   String oakDirection = 'Down';
   double oakX = 0.125;
@@ -36,6 +41,8 @@ class _HomePageState extends State<HomePage> {
   List<List<double>> blockedPaths = LitteRootSettings.blockedPaths;
   Map<String, List<List<dynamic>>> toOtherMaps =
       LitteRootSettings.toAnotherMaps;
+  List<List<double>> changeboyIndex = LitteRootSettings.behindSomething;
+  List<List<dynamic>> actions = LitteRootSettings.actions;
 
   void _animateWalk() async {
     Timer.periodic(const Duration(milliseconds: 50), (timer) {
@@ -53,7 +60,17 @@ class _HomePageState extends State<HomePage> {
     return double.parse(num.toStringAsFixed(4));
   }
 
-  bool changeMap() {
+  void _changeBoyIndex(x, y) {
+    changeboyIndex.forEach((coordinates) {
+      bool isSamePosition =
+          x == cleanNum(coordinates[0]) && y == cleanNum(coordinates[1]);
+      setState(() {
+        boyIndex = isSamePosition ? 1 : 2;
+      });
+    });
+  }
+
+  void changeMap() {
     toOtherMaps.forEach((location, paths) {
       paths.forEach((coordinates) {
         if (mapX == coordinates[0] && mapY == coordinates[1]) {
@@ -88,12 +105,22 @@ class _HomePageState extends State<HomePage> {
         }
       });
     });
-    return true;
   }
 
   double roundDouble(double value, int places) {
     num mod = pow(10.0, places);
     return ((value * mod).round().toDouble() / mod);
+  }
+
+  void canSolveAnAction(x, y, direction) {
+    actions.forEach((action) {
+      if (x == cleanNum(action[0]) &&
+          y == cleanNum(action[1]) &&
+          direction == action[2]) {
+        print(
+            'action MapX:${cleanNum(action[0])}, MapY:${cleanNum(action[1])}');
+      }
+    });
   }
 
   bool canMoveTo() {
@@ -125,145 +152,200 @@ class _HomePageState extends State<HomePage> {
 
   void moveUp() {
     boyDirection = 'Up';
-    changeMap();
-    if (canMoveTo()) {
+    bool canMove = canMoveTo();
+    if (canMove) {
       setState(() {
         mapY = cleanNum(mapY + step);
       });
     }
+    changeMap();
+    canSolveAnAction(mapX, mapY, 'Up');
     _animateWalk();
+    _changeBoyIndex(mapX, mapY);
   }
 
   void moveDown() {
-    changeMap();
     boyDirection = 'Down';
-    if (canMoveTo()) {
+    bool canMove = canMoveTo();
+
+    if (canMove) {
       setState(() {
         mapY = cleanNum(mapY - step);
       });
     }
+    changeMap();
+    canSolveAnAction(mapX, mapY, 'Down');
     _animateWalk();
+    _changeBoyIndex(mapX, mapY);
   }
 
   void moveLeft() {
-    changeMap();
     boyDirection = 'Left';
-    if (canMoveTo()) {
+    bool canMove = canMoveTo();
+
+    if (canMove) {
       setState(() {
         mapX = cleanNum(mapX + step);
       });
     }
+    changeMap();
+    canSolveAnAction(mapX, mapY, 'Left');
     _animateWalk();
+    _changeBoyIndex(mapX, mapY);
   }
 
   void moveRight() {
-    changeMap();
     boyDirection = 'Right';
-    if (canMoveTo()) {
+    bool canMove = canMoveTo();
+
+    if (canMove) {
       setState(() {
         mapX = cleanNum(mapX - step);
       });
     }
     _animateWalk();
+    changeMap();
+    canSolveAnAction(mapX, mapY, 'Right');
+    _changeBoyIndex(mapX, mapY);
   }
 
   void pressedA() {}
   void pressedB() {}
 
+  FocusNode focusNode = FocusNode();
+
   @override
   Widget build(BuildContext context) {
-    // print('X:${mapX}, Y:${mapY}');
     return Scaffold(
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AspectRatio(
-            aspectRatio: 1,
-            child: Container(
-              color: Colors.black,
-              child: Stack(children: [
-                //littelroot
-                LittleRoot(
-                  x: mapX,
-                  y: mapY,
-                  currentMap: currentLocation,
-                ),
-                Pokelab(
-                  x: mapX,
-                  y: mapY,
-                  currentMap: currentLocation,
-                ),
-
-                Container(
-                  child: ProfOak(
-                    x: mapX,
-                    y: mapY,
-                    direction: oakDirection,
-                    location: currentLocation,
+      body: RawKeyboardListener(
+        // keyBoard com mesmo delay do HoldDetector do Botão
+        onKey: (RawKeyEvent event) {
+          final isKeyDown = event is RawKeyDownEvent;
+          if (keyPressed) {
+            keyboardTimer?.cancel();
+          } else {
+            keyPressed = true;
+            Timer(const Duration(milliseconds: 100), () {
+              if (event.logicalKey == LogicalKeyboardKey.keyA && isKeyDown) {
+                boyDirection = 'Left';
+                moveLeft();
+              } else if (event.logicalKey == LogicalKeyboardKey.keyD &&
+                  isKeyDown) {
+                boyDirection = 'Right';
+                moveRight();
+              } else if (event.logicalKey == LogicalKeyboardKey.keyW &&
+                  isKeyDown) {
+                boyDirection = 'Up';
+                moveUp();
+              } else if (event.logicalKey == LogicalKeyboardKey.keyS &&
+                  isKeyDown) {
+                boyDirection = 'Down';
+                moveDown();
+              }
+              keyPressed = false;
+            });
+          }
+        },
+        focusNode: focusNode,
+        autofocus: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AspectRatio(
+              aspectRatio: 1,
+              child: Container(
+                color: Colors.black,
+                child: Indexer(children: [
+                  if (currentLocation == 'littleroot')
+                    LittleRoot(
+                      x: mapX,
+                      y: mapY,
+                      currentMap: currentLocation,
+                    ),
+                  if (currentLocation == 'littleroot')
+                    Indexed(
+                      index: 2,
+                      child: Container(
+                        child: ProfOak(
+                          x: mapX,
+                          y: mapY,
+                          direction: oakDirection,
+                          location: currentLocation,
+                        ),
+                        alignment: const Alignment(0, 0),
+                      ),
+                    ),
+                  if (currentLocation == 'pokelab')
+                    Pokelab(
+                      x: mapX,
+                      y: mapY,
+                      currentMap: currentLocation,
+                    ),
+                  Indexed(
+                    index: boyIndex,
+                    child: Container(
+                      child: MyBoy(
+                        height: boyHeight,
+                        direction: boyDirection,
+                        spriteCount: boySpriteCount,
+                        location: currentLocation,
+                      ),
+                      alignment: const Alignment(0, 0),
+                    ),
                   ),
-                  alignment: const Alignment(0, 0),
-                ),
-                Container(
-                  child: MyBoy(
-                    height: boyHeight,
-                    direction: boyDirection,
-                    spriteCount: boySpriteCount,
-                    location: currentLocation,
-                  ),
-                  alignment: const Alignment(0, 0),
-                ),
-              ]),
+                ]),
+              ),
             ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Container(
-              color: Colors.grey[900],
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Text(
-                          'G A M E B O Y',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 5),
-                          child: Icon(
-                            Icons.favorite,
-                            color: Colors.red,
-                            size: 20,
+            Expanded(
+              flex: 1,
+              child: Container(
+                color: Colors.grey[900],
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Text(
+                            'G A M E B O Y',
+                            style: TextStyle(color: Colors.white),
                           ),
-                        ),
-                        Text(
-                          'F L U T T E R',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Joypad(
-                            moveUp: moveUp,
-                            moveDown: moveDown,
-                            moveLeft: moveLeft,
-                            moveRight: moveRight,
-                            pressedA: pressedA,
-                            pressedB: pressedB),
-                      ],
-                    ),
-                  ],
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 5),
+                            child: Icon(
+                              Icons.favorite,
+                              color: Colors.red,
+                              size: 20,
+                            ),
+                          ),
+                          Text(
+                            'F L U T T E R',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Joypad(
+                              moveUp: moveUp,
+                              moveDown: moveDown,
+                              moveLeft: moveLeft,
+                              moveRight: moveRight,
+                              pressedA: pressedA,
+                              pressedB: pressedB),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

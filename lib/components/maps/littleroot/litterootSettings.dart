@@ -4,9 +4,24 @@ class LitteRootSettings {
   static double boyHeight = 20;
   static Map<String, List<List<dynamic>>> toAnotherMaps = {
     'pokelab': [
-      [0.625, -1.35, 'Up']
+      [0.625, -1.1, 'Up']
     ],
   };
+  static List<List<double>> behindSomething = [
+    [0.125, 1.15],
+
+    // 2  1  2
+    // 1  2  1
+    // 2 oak 2  exemplo para ficar atrás do profoak
+  ];
+
+  static List<List<dynamic>> actions = [
+    [0.125, 0.9 + LitteRootSettings.step, 'Down'],
+    [0.125 + LitteRootSettings.step, 0.9, 'Right'],
+    [0.125 - LitteRootSettings.step, 0.9, 'Left'],
+    [0.125, 0.9 - LitteRootSettings.step, 'Up'],
+  ];
+
   static const List<List<double>> blockedPaths = [
     [0.125, 0.9], //profOak
     [0.125, 2.9],
