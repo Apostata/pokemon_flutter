@@ -7,7 +7,7 @@ class MyBoy extends StatelessWidget {
   final String location;
   final double height;
 
-  MyBoy({
+  const MyBoy({
     Key? key,
     required this.direction,
     required this.spriteCount,

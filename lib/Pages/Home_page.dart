@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:pokemon_dart/components/characters/boy.dart';
+import 'package:pokemon_dart/components/characters/oak.dart';
 import 'package:pokemon_dart/components/joypad.dart';
 import 'package:pokemon_dart/components/maps/littleroot/litterootSettings.dart';
 import 'package:pokemon_dart/components/maps/littleroot/littleroot.dart';
@@ -26,9 +27,15 @@ class _HomePageState extends State<HomePage> {
   double step = LitteRootSettings.step;
   double boyHeight = LitteRootSettings.boyHeight;
 
+  String oakDirection = 'Down';
+  double oakX = 0.125;
+  double oakY = 0.9;
+  int countPressingA = -1;
+
   String currentLocation = 'littleroot';
   List<List<double>> blockedPaths = LitteRootSettings.blockedPaths;
-  Map<String, List<List<double>>> toOtherMaps = LitteRootSettings.toAnotherMaps;
+  Map<String, List<List<dynamic>>> toOtherMaps =
+      LitteRootSettings.toAnotherMaps;
 
   void _animateWalk() async {
     Timer.periodic(const Duration(milliseconds: 50), (timer) {
@@ -52,26 +59,30 @@ class _HomePageState extends State<HomePage> {
         if (mapX == coordinates[0] && mapY == coordinates[1]) {
           switch (location) {
             case 'pokelab':
-              setState(() {
-                boyHeight = PokelabSettings.boyHeight;
-                step = PokelabSettings.step;
-                toOtherMaps = PokelabSettings.toAnotherMaps;
-                blockedPaths = PokelabSettings.blockedPaths;
-                mapX = PokelabSettings.initialPosition[0];
-                mapY = PokelabSettings.initialPosition[1];
-                currentLocation = location;
-              });
+              if (boyDirection == coordinates[2]) {
+                setState(() {
+                  boyHeight = PokelabSettings.boyHeight;
+                  step = PokelabSettings.step;
+                  toOtherMaps = PokelabSettings.toAnotherMaps;
+                  blockedPaths = PokelabSettings.blockedPaths;
+                  mapX = PokelabSettings.initialPosition[0];
+                  mapY = PokelabSettings.initialPosition[1];
+                  currentLocation = location;
+                });
+              }
               break;
             default:
-              setState(() {
-                boyHeight = LitteRootSettings.boyHeight;
-                step = LitteRootSettings.step;
-                toOtherMaps = LitteRootSettings.toAnotherMaps;
-                blockedPaths = LitteRootSettings.blockedPaths;
-                mapX = 0.625;
-                mapY = -1.35;
-                currentLocation = location;
-              });
+              if (boyDirection == coordinates[2]) {
+                setState(() {
+                  boyHeight = LitteRootSettings.boyHeight;
+                  step = LitteRootSettings.step;
+                  toOtherMaps = LitteRootSettings.toAnotherMaps;
+                  blockedPaths = LitteRootSettings.blockedPaths;
+                  mapX = 0.625;
+                  mapY = -1.35;
+                  currentLocation = location;
+                });
+              }
               break;
           }
         }
@@ -181,6 +192,16 @@ class _HomePageState extends State<HomePage> {
                   x: mapX,
                   y: mapY,
                   currentMap: currentLocation,
+                ),
+
+                Container(
+                  child: ProfOak(
+                    x: mapX,
+                    y: mapY,
+                    direction: oakDirection,
+                    location: currentLocation,
+                  ),
+                  alignment: const Alignment(0, 0),
                 ),
                 Container(
                   child: MyBoy(

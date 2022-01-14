@@ -5,15 +5,16 @@ class PokelabSettings {
   static List<double> initialPosition = [0, -2.55];
   static double step = 0.43;
   static double boyHeight = 30;
-  static Map<String, List<List<double>>> toAnotherMaps = {
+  static Map<String, List<List<dynamic>>> toAnotherMaps = {
     'littleroot': [
-      [0, -2.55],
-      [-0.43, -2.55]
+      [0, -2.55, 'Down'],
+      [-0.43, -2.55, 'Down']
     ],
   };
 
   static List<List<double>> blockedPaths = [
 //bottom
+    [0 + (0 * PokelabSettings.step), -2.55 - 1 * PokelabSettings.step],
     [0 + (1 * PokelabSettings.step), -2.55 - 1 * PokelabSettings.step],
     [0 + (2 * PokelabSettings.step), -2.55 - 1 * PokelabSettings.step],
     [0 + (3 * PokelabSettings.step), -2.55 - 1 * PokelabSettings.step],
