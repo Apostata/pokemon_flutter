@@ -2,15 +2,16 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:indexed/indexed.dart';
 import 'package:pokemon_dart/components/characters/boy.dart';
 import 'package:pokemon_dart/components/characters/oak.dart';
 import 'package:pokemon_dart/components/joypad.dart';
-import 'package:pokemon_dart/components/maps/littleroot/litterootSettings.dart';
-import 'package:pokemon_dart/components/maps/littleroot/littleroot.dart';
-import 'package:pokemon_dart/components/maps/pokelab/pokelab.dart';
-import 'package:pokemon_dart/components/maps/pokelab/pokelabSettings.dart';
+import 'package:pokemon_dart/components/keyboard.dart';
+import 'package:pokemon_dart/components/maps/littlerootWidget.dart';
+import 'package:pokemon_dart/components/maps/mapWidget.dart';
+import 'package:pokemon_dart/components/maps/pokelab.dart';
+import 'package:pokemon_dart/models/Littleroot.dart';
+import 'package:pokemon_dart/models/Pokelab.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -20,29 +21,44 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  double mapX = LitteRootSettings.initialPosition[0];
-  double mapY = LitteRootSettings.initialPosition[1];
-
-  Timer? keyboardTimer;
-  bool keyPressed = false;
-
   int boySpriteCount = 0;
-  String boyDirection = 'Down';
-  double step = LitteRootSettings.step;
-  double boyHeight = LitteRootSettings.boyHeight;
   int boyIndex = 2;
+  String boyDirection = 'Down';
+  String currentLocation = 'littleroot';
+
+  late double mapX;
+  late double mapY;
+  late List<List<double>> blockedPaths;
+  late Map<String, List<List<dynamic>>> toOtherMaps;
+  late List<List<double>> changeboyIndex;
+  late List<List<dynamic>> actions;
+  late double step;
+  late double boyHeight;
 
   String oakDirection = 'Down';
   double oakX = 0.125;
   double oakY = 0.9;
   int countPressingA = -1;
 
-  String currentLocation = 'littleroot';
-  List<List<double>> blockedPaths = LitteRootSettings.blockedPaths;
-  Map<String, List<List<dynamic>>> toOtherMaps =
-      LitteRootSettings.toAnotherMaps;
-  List<List<double>> changeboyIndex = LitteRootSettings.behindSomething;
-  List<List<dynamic>> actions = LitteRootSettings.actions;
+  bool canAction = false;
+  // ignore: prefer_function_declarations_over_variables
+  late void Function() actionFunction;
+
+  @override
+  void initState() {
+    final map = Littleroot();
+    setState(() {
+      step = map.step;
+      mapX = map.initialPosition[0];
+      mapY = map.initialPosition[1];
+      blockedPaths = map.blockedPaths;
+      toOtherMaps = map.toAnotherMaps;
+      changeboyIndex = map.behindSomething;
+      boyHeight = map.boyHeight;
+      actions = map.actions;
+    });
+    super.initState();
+  }
 
   void _animateWalk() async {
     Timer.periodic(const Duration(milliseconds: 50), (timer) {
@@ -76,28 +92,34 @@ class _HomePageState extends State<HomePage> {
         if (mapX == coordinates[0] && mapY == coordinates[1]) {
           switch (location) {
             case 'pokelab':
+              final lab = Pokelab();
               if (boyDirection == coordinates[2]) {
                 setState(() {
-                  boyHeight = PokelabSettings.boyHeight;
-                  step = PokelabSettings.step;
-                  toOtherMaps = PokelabSettings.toAnotherMaps;
-                  blockedPaths = PokelabSettings.blockedPaths;
-                  mapX = PokelabSettings.initialPosition[0];
-                  mapY = PokelabSettings.initialPosition[1];
                   currentLocation = location;
+                  step = lab.step;
+                  mapX = lab.initialPosition[0];
+                  mapY = lab.initialPosition[1];
+                  blockedPaths = lab.blockedPaths;
+                  toOtherMaps = lab.toAnotherMaps;
+                  changeboyIndex = lab.behindSomething;
+                  boyHeight = lab.boyHeight;
+                  actions = lab.actions;
                 });
               }
               break;
-            default:
+            case 'littleroot':
+              final ltr = Littleroot();
               if (boyDirection == coordinates[2]) {
                 setState(() {
-                  boyHeight = LitteRootSettings.boyHeight;
-                  step = LitteRootSettings.step;
-                  toOtherMaps = LitteRootSettings.toAnotherMaps;
-                  blockedPaths = LitteRootSettings.blockedPaths;
+                  currentLocation = location;
+                  step = ltr.step;
                   mapX = 0.625;
                   mapY = -1.35;
-                  currentLocation = location;
+                  blockedPaths = ltr.blockedPaths;
+                  toOtherMaps = ltr.toAnotherMaps;
+                  changeboyIndex = ltr.behindSomething;
+                  boyHeight = ltr.boyHeight;
+                  actions = ltr.actions;
                 });
               }
               break;
@@ -112,15 +134,20 @@ class _HomePageState extends State<HomePage> {
     return ((value * mod).round().toDouble() / mod);
   }
 
-  void canSolveAnAction(x, y, direction) {
+  bool canSolveAnAction(x, y, direction) {
+    bool canAction = false;
     actions.forEach((action) {
       if (x == cleanNum(action[0]) &&
           y == cleanNum(action[1]) &&
           direction == action[2]) {
-        print(
-            'action MapX:${cleanNum(action[0])}, MapY:${cleanNum(action[1])}');
+        action[3]();
+        setState(() {
+          actionFunction = action[3];
+        });
+        canAction = true;
       }
     });
+    return canAction;
   }
 
   bool canMoveTo() {
@@ -159,7 +186,7 @@ class _HomePageState extends State<HomePage> {
       });
     }
     changeMap();
-    canSolveAnAction(mapX, mapY, 'Up');
+    // canSolveAnAction(mapX, mapY, 'Up');
     _animateWalk();
     _changeBoyIndex(mapX, mapY);
   }
@@ -174,7 +201,7 @@ class _HomePageState extends State<HomePage> {
       });
     }
     changeMap();
-    canSolveAnAction(mapX, mapY, 'Down');
+    // canSolveAnAction(mapX, mapY, 'Down');
     _animateWalk();
     _changeBoyIndex(mapX, mapY);
   }
@@ -189,7 +216,7 @@ class _HomePageState extends State<HomePage> {
       });
     }
     changeMap();
-    canSolveAnAction(mapX, mapY, 'Left');
+    // canSolveAnAction(mapX, mapY, 'Left');
     _animateWalk();
     _changeBoyIndex(mapX, mapY);
   }
@@ -205,11 +232,16 @@ class _HomePageState extends State<HomePage> {
     }
     _animateWalk();
     changeMap();
-    canSolveAnAction(mapX, mapY, 'Right');
+    // canSolveAnAction(mapX, mapY, 'Right');
     _changeBoyIndex(mapX, mapY);
   }
 
-  void pressedA() {}
+  void pressedA() {
+    if (canSolveAnAction(mapX, mapY, boyDirection)) {
+      actionFunction();
+    }
+  }
+
   void pressedB() {}
 
   FocusNode focusNode = FocusNode();
@@ -217,37 +249,13 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: RawKeyboardListener(
-        // keyBoard com mesmo delay do HoldDetector do Botão
-        onKey: (RawKeyEvent event) {
-          final isKeyDown = event is RawKeyDownEvent;
-          if (keyPressed) {
-            keyboardTimer?.cancel();
-          } else {
-            keyPressed = true;
-            Timer(const Duration(milliseconds: 100), () {
-              if (event.logicalKey == LogicalKeyboardKey.keyA && isKeyDown) {
-                boyDirection = 'Left';
-                moveLeft();
-              } else if (event.logicalKey == LogicalKeyboardKey.keyD &&
-                  isKeyDown) {
-                boyDirection = 'Right';
-                moveRight();
-              } else if (event.logicalKey == LogicalKeyboardKey.keyW &&
-                  isKeyDown) {
-                boyDirection = 'Up';
-                moveUp();
-              } else if (event.logicalKey == LogicalKeyboardKey.keyS &&
-                  isKeyDown) {
-                boyDirection = 'Down';
-                moveDown();
-              }
-              keyPressed = false;
-            });
-          }
-        },
-        focusNode: focusNode,
-        autofocus: true,
+      body: Keyboard(
+        moveUp: moveUp,
+        moveDown: moveDown,
+        moveLeft: moveLeft,
+        moveRight: moveRight,
+        pressedA: pressedA,
+        pressedB: pressedB,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -256,17 +264,16 @@ class _HomePageState extends State<HomePage> {
               child: Container(
                 color: Colors.black,
                 child: Indexer(children: [
-                  if (currentLocation == 'littleroot')
-                    LittleRoot(
-                      x: mapX,
-                      y: mapY,
-                      currentMap: currentLocation,
-                    ),
+                  MapWidget(
+                    x: mapX,
+                    y: mapY,
+                    currentMap: currentLocation,
+                  ),
                   if (currentLocation == 'littleroot')
                     Indexed(
                       index: 2,
                       child: Container(
-                        child: ProfOak(
+                        child: ProfOakWidget(
                           x: mapX,
                           y: mapY,
                           direction: oakDirection,
@@ -274,12 +281,6 @@ class _HomePageState extends State<HomePage> {
                         ),
                         alignment: const Alignment(0, 0),
                       ),
-                    ),
-                  if (currentLocation == 'pokelab')
-                    Pokelab(
-                      x: mapX,
-                      y: mapY,
-                      currentMap: currentLocation,
                     ),
                   Indexed(
                     index: boyIndex,
@@ -331,12 +332,13 @@ class _HomePageState extends State<HomePage> {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Joypad(
-                              moveUp: moveUp,
-                              moveDown: moveDown,
-                              moveLeft: moveLeft,
-                              moveRight: moveRight,
-                              pressedA: pressedA,
-                              pressedB: pressedB),
+                            moveUp: moveUp,
+                            moveDown: moveDown,
+                            moveLeft: moveLeft,
+                            moveRight: moveRight,
+                            pressedA: pressedA,
+                            pressedB: pressedB,
+                          ),
                         ],
                       ),
                     ],

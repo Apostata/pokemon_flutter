@@ -84,7 +84,7 @@ class Joypad extends StatelessWidget {
                   width: 50,
                 ),
                 Button(
-                  function: moveUp,
+                  function: pressedA,
                   textOrIcon: 'a',
                 ),
               ],
